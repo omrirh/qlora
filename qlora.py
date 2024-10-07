@@ -691,6 +691,12 @@ def get_last_checkpoint(checkpoint_dir):
     return None, False # first training
 
 def train():
+    def compute_metrics(pred):
+        labels = pred.label_ids
+        preds = pred.predictions.argmax(-1)
+        accuracy = (preds == labels).mean()
+        return {"accuracy": accuracy}
+
     hfparser = transformers.HfArgumentParser((
         ModelArguments, DataArguments, TrainingArguments, GenerationArguments
     ))
@@ -701,9 +707,6 @@ def train():
         **vars(model_args), **vars(data_args), **vars(training_args)
     )
     print(args)
-
-    # patch do_eval to True
-    args.do_eval = True
 
     checkpoint_dir, completed_training = get_last_checkpoint(args.output_dir)
     if completed_training:
@@ -721,6 +724,7 @@ def train():
         model=model,
         tokenizer=tokenizer,
         args=training_args,
+        compute_metrics=compute_metrics,
         **{k:v for k,v in data_module.items() if k != 'predict_dataset'},
     )
 
